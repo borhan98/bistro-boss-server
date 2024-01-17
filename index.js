@@ -32,6 +32,7 @@ async function run() {
         const reviewCollection = client.db("BistroResturent").collection("reviews");
         const cartCollection = client.db("BistroResturent").collection("carts");
         const userCollection = client.db("BistroResturent").collection("users");
+        const paymentCollection = client.db("BistroResturent").collection("payments");
 
         // Custom middlewares
         // Token verify
@@ -170,7 +171,7 @@ async function run() {
         })
 
         /*--------------------------------------------------
-                        Stripe related APIs
+                        Stripe Payment related APIs
         ---------------------------------------------------*/
         app.post("/create-payment-intent", async (req, res) => {
             const price = req.body.price;
@@ -187,6 +188,19 @@ async function run() {
             res.send({
                 clientSecret: paymentIntent.client_secret,
             })
+        })
+
+        app.post("/payment", async (req, res) => {
+            const payment = req.body;
+            const query = {
+                _id: {
+                    $in: payment.deletedIds.map(id => new ObjectId(id))
+                }
+            }
+            const paymentResult = await paymentCollection.insertOne(payment);
+            const deletedResult = await cartCollection.deleteMany(query);
+
+            res.send({ paymentResult, deletedResult });
         })
 
 
