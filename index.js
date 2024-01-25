@@ -222,6 +222,30 @@ async function run() {
             res.send({ users, orders, menuItems, revenue });
         })
 
+        /*--------------------------------------------------
+                        Order Payment related APIs
+        ---------------------------------------------------*/
+        app.get("/order-stats", async (req, res) => {
+            const result = await paymentCollection.aggregate([
+                {
+                    $unwind: "$menuIds",
+                },
+                {
+                    $lookup: {
+                        from: "menu",
+                        localField: "menuIds",
+                        foreignField: "_id",
+                        as: "menuItems",
+                    }
+                },
+                {
+                    $unwind: "menuItems",
+                }
+            ]).toArray();
+
+            res.send(result);
+        })
+
 
         // Send a ping to confirm a successful connection
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
