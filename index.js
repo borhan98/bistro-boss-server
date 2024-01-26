@@ -203,6 +203,9 @@ async function run() {
             res.send({ paymentResult, deletedResult });
         })
 
+        /*--------------------------------------------------
+                        Admin Stats related APIs
+        ---------------------------------------------------*/
         app.get("/admin-stats", verifyToken, verifyAdmin, async (req, res) => {
             const users = await userCollection.estimatedDocumentCount();
             const orders = await paymentCollection.estimatedDocumentCount();
@@ -216,16 +219,13 @@ async function run() {
                         }
                     }
                 }
-            ]).toArray()
+            ]).toArray();
             const revenue = totalRevenue.length ? totalRevenue[0].total : 0;
 
             res.send({ users, orders, menuItems, revenue });
         })
 
-        /*--------------------------------------------------
-                        Order Payment related APIs
-        ---------------------------------------------------*/
-        app.get("/order-stats", async (req, res) => {
+        app.get("/order-stats", verifyToken, verifyAdmin, async (req, res) => {
             const result = await paymentCollection.aggregate([
                 {
                     $unwind: "$menuIds",
@@ -239,7 +239,22 @@ async function run() {
                     }
                 },
                 {
-                    $unwind: "menuItems",
+                    $unwind: "$menuItems",
+                },
+                {
+                    $group: {
+                        _id: "$menuItems.category",
+                        quantity: { $sum: 1 },
+                        revenue: { $sum: "$menuItems.price" }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        category: "$_id",
+                        quantity: "$quantity",
+                        revenue: "$revenue"
+                    }
                 }
             ]).toArray();
 
@@ -255,8 +270,6 @@ async function run() {
     }
 }
 run().catch(console.dir);
-
-
 
 app.get("/", (req, res) => {
     res.send("Resturent is running...")
